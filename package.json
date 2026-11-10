@@ -1,0 +1,64 @@
+{
+  "name": "mobile-money-kit",
+  "version": "0.3.0",
+  "private": true,
+  "description": "SDK Mobile Money unifié pour l'Afrique de l'Ouest (Orange Money, MTN MoMo, Moov, Wave, carte) via plusieurs agrégateurs (XPAYE/Paiement Pro, CinetPay) avec bascule automatique et vérification sécurisée des notifications.",
+  "keywords": [
+    "mobile-money",
+    "orange-money",
+    "mtn-momo",
+    "moov-money",
+    "wave",
+    "paiement",
+    "payment",
+    "fcfa",
+    "xof",
+    "cinetpay",
+    "paiementpro",
+    "xpaye",
+    "cote-d-ivoire",
+    "afrique",
+    "webhook"
+  ],
+  "license": "MIT",
+  "author": "Deathgun07",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "prepublishOnly": "npm run build && node --test test/*.test.mjs",
+    "prepare": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Deathgun07/mobile-money-kit.git"
+  },
+  "homepage": "https://github.com/Deathgun07/mobile-money-kit#readme",
+  "bugs": {
+    "url": "https://github.com/Deathgun07/mobile-money-kit/issues"
+  }
+}
