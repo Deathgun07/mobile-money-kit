@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1
+
+- **Correctif** : l'installation depuis GitHub échouait avec Bun (et pnpm 10),
+  qui bloquent les scripts d'installation : `dist/` n'était pas compilé. Le
+  code compilé est maintenant versionné ; plus aucun script à l'installation.
+- Bun pris en charge et testé (`npm run test:bun`).
+- README centré sur XPAYE ; CinetPay présenté comme secours facultatif ;
+  installation avec Bun, npm, pnpm et Yarn.
+
 ## 0.3.0
 
 - **Moyens de la documentation officielle uniquement** : XPAYE fournit les

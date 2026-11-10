@@ -1,67 +1,107 @@
 # mobile-money-kit
 
-SDK Mobile Money unifié pour l'Afrique de l'Ouest et centrale : **Orange
-Money, MTN MoMo, Moov Money / Flooz, Wave, Togocel, Airtel Money, carte
-bancaire et PayPal**, via plusieurs agrégateurs, avec une seule
-API dans ton code.
+SDK **XPAYE (ex-Paiement Pro)** pour encaisser en ligne par Mobile Money,
+carte bancaire et PayPal en Afrique de l'Ouest et centrale : **Orange Money,
+MTN MoMo, Moov Money / Flooz, Wave, Togocel, Airtel Money**… avec une API
+simple et des notifications sécurisées par défaut.
 
-- **Plusieurs agrégateurs, une seule interface** : XPAYE (ex-Paiement Pro) et
-  CinetPay fournis, d'autres faciles à ajouter.
-- **Bascule automatique** : si un agrégateur est en panne, le paiement passe
-  par le suivant.
-- **Notifications vérifiées par défaut** : signature, jeton secret ou
-  reconfirmation auprès de l'agrégateur. Une notification non authentifiée est
-  rejetée.
+> ✅ **Éprouvé avec XPAYE en production** (Orange Money, MTN MoMo, Wave et
+> carte en Côte d'Ivoire). CinetPay est aussi fourni, comme agrégateur de
+> secours facultatif.
+
+- **XPAYE prêt à l'emploi** : initialisation, page de paiement, et lecture
+  de sa notification réelle (paramètres dans l'URL, second `?` réparé).
+- **Notifications vérifiées par défaut** : jeton secret propre à chaque
+  paiement + `hashcode` XPAYE (formule confirmée sur un vrai paiement). Une
+  notification non authentifiée est rejetée.
 - **Contrôle du montant** payé contre le montant attendu.
+- **Tu choisis tes moyens de paiement** parmi les 18 canaux officiels XPAYE.
 - **Numéros ivoiriens** : normalisation et détection de l'opérateur (01 Moov,
   05 MTN, 07 Orange).
-- Aucune dépendance. TypeScript. Node 18+ (Next.js, Express, Fastify, Hono…).
+- **Bascule automatique** vers un second agrégateur (CinetPay) si XPAYE est
+  indisponible, si tu le souhaites.
+- Aucune dépendance. TypeScript. Node 18+ ou Bun (Next.js, Express, Fastify,
+  Hono, Elysia…).
 
-> 🔑 **Aucune clé n'est fournie.** Chaque intégrateur ouvre son propre compte
-> marchand (XPAYE, CinetPay) et passe ses identifiants par variables
-> d'environnement. Ne commite jamais de clé.
+> 🔑 **Aucune clé n'est fournie.** Ouvre ton propre compte marchand XPAYE et
+> passe tes identifiants par variables d'environnement. Ne commite jamais de
+> clé.
 
-> ⚠️ **Côté serveur uniquement.** Les clés des agrégateurs ne doivent jamais
-> se retrouver dans le navigateur ou dans l'app mobile. L'app appelle TON
-> serveur, qui appelle l'agrégateur.
+> ⚠️ **Côté serveur uniquement.** Les clés ne doivent jamais se retrouver
+> dans le navigateur ou dans l'app mobile. L'app appelle TON serveur, qui
+> appelle XPAYE.
 
 ## Installation
 
-Le kit n'est pas encore sur npm : installe-le depuis GitHub (il est compilé
-automatiquement à l'installation).
+Le kit n'est pas encore sur npm : installe-le depuis GitHub, avec ton
+gestionnaire de paquets habituel. Le code compilé est inclus, aucun script
+d'installation n'est exécuté.
 
 ```bash
-npm install github:Deathgun07/mobile-money-kit
-# ou une version précise :
-npm install github:Deathgun07/mobile-money-kit#v0.3.0
+# Bun
+bun add github:Deathgun07/mobile-money-kit#v0.3.1
+
+# npm
+npm install github:Deathgun07/mobile-money-kit#v0.3.1
+
+# pnpm
+pnpm add github:Deathgun07/mobile-money-kit#v0.3.1
+
+# Yarn
+yarn add mobile-money-kit@github:Deathgun07/mobile-money-kit#v0.3.1
 ```
+
+Garde le `#v0.3.1` : sans lui, tu installes l'état courant de la branche
+`main`, qui peut changer.
 
 ## Configuration
 
+Variables d'environnement (fichier `.env`, jamais commité) :
+
+```bash
+XPAYE_MERCHANT_ID=PP-XXXX          # identifiant marchand fourni par XPAYE
+XPAYE_SECRET_KEY=...               # clé secrète marchand fournie par XPAYE
+XPAYE_WEBHOOK_SECRET=...           # secret généré PAR TOI, 32+ caractères :
+# node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
 ```ts
 // lib/payments.ts
-import { PaymentClient, XpayeProvider, CinetPayProvider } from 'mobile-money-kit';
+import { PaymentClient, XpayeProvider } from 'mobile-money-kit';
 
 export const payments = new PaymentClient({
   providers: [
     new XpayeProvider({
       merchantId: process.env.XPAYE_MERCHANT_ID!,
-      // Secret propre à TON serveur (pas fourni par XPAYE) :
-      //   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      // Signe le jeton ajouté à l'URL de notification : seul XPAYE la connaît.
       webhookSecret: process.env.XPAYE_WEBHOOK_SECRET!,
-      // Clé secrète marchand fournie par XPAYE : active la vérification du hashcode
+      // Active la vérification du hashcode envoyé par XPAYE.
       secretKey: process.env.XPAYE_SECRET_KEY,
       sandbox: process.env.NODE_ENV !== 'production',
     }),
-    // Facultatif : agrégateur de secours
+  ],
+  // Les moyens que TU proposes, dans l'ordre d'affichage (voir « Moyens de paiement »)
+  channels: ['WAVE_CI', 'ORANGE_CI', 'MTN_CI', 'CARD'],
+});
+```
+
+### Facultatif : CinetPay en secours
+
+Si XPAYE est injoignable, le paiement peut basculer automatiquement vers
+CinetPay (compte CinetPay requis) :
+
+```ts
+import { CinetPayProvider } from 'mobile-money-kit';
+
+new PaymentClient({
+  providers: [
+    new XpayeProvider({ /* … */ }),            // toujours essayé en premier
     new CinetPayProvider({
       apiKey: process.env.CINETPAY_API_KEY!,
       siteId: process.env.CINETPAY_SITE_ID!,
       secretKey: process.env.CINETPAY_SECRET_KEY,
     }),
   ],
-  // Les moyens que TU proposes (facultatif, voir « Moyens de paiement »)
-  channels: ['WAVE_CI', 'ORANGE_CI', 'MTN_CI', 'CARD'],
   onFallback: (from, error, to) => console.warn(`[paiement] ${from} indisponible, bascule vers ${to}`, error.message),
 });
 ```
@@ -142,8 +182,8 @@ Si tu préfères une route par agrégateur, utilise
 
 | Agrégateur | Authentification | Statut final |
 |---|---|---|
-| **CinetPay** | x-token HMAC-SHA256 (si `secretKey`) ; un x-token faux est rejeté | **Toujours reconfirmé** via l'API `/payment/check` |
 | **XPAYE** | Jeton secret ajouté à `notificationURL` (`?nt=…`) ; `hashcode` vérifié si `secretKey`, un hashcode faux est rejeté | Lu dans la notification **uniquement si authentifiée** |
+| **CinetPay** | x-token HMAC-SHA256 (si `secretKey`) ; un x-token faux est rejeté | **Toujours reconfirmé** via l'API `/payment/check` |
 
 Puis, si `expectedAmount` est fourni, le montant payé doit être exactement
 celui attendu.
@@ -181,6 +221,54 @@ export async function GET(req: Request) {
 Pour une app mobile, `returnUrl` peut être un lien profond
 (`monapp://abonnement`). N'accepte que le scheme de ton app si le client te
 le transmet : sinon l'agrégateur redirigerait vers une URL arbitraire.
+
+## XPAYE : à savoir
+
+- XPAYE n'a **pas d'API publique de vérification de statut**. La notification
+  est donc la seule source, d'où l'importance du `webhookSecret`.
+- La notification arrive **dans l'URL, corps vide**, et XPAYE colle ses
+  paramètres avec un second `?` (`…&nt=<jeton>?merchantId=…&amount=…`). Le kit
+  répare ce format : passe-lui simplement `req.url`.
+- Formule du `hashcode` (confirmée sur un vrai paiement) :
+  `SHA-256(referenceNumber|amount|merchantId|clé secrète)` en hexadécimal,
+  disponible via `computeXpayeHashcode(fields, secretKey)`.
+  ⚠️ **Le statut n'est pas signé** : un paiement échoué et un paiement réussi
+  de même référence et même montant ont le même hashcode. C'est pourquoi :
+  - un hashcode **faux** fait toujours rejeter la notification ;
+  - dès que `webhookSecret` est fourni, le **jeton `nt` est exigé**
+    (`requireNotifyToken`, défaut `true`), un hashcode valide seul ne suffit pas.
+- La clé secrète XPAYE est courte : ne la réutilise **pas** comme
+  `webhookSecret` (32+ caractères aléatoires générés par toi).
+- **Sandbox** : XPAYE n'y envoie pas toujours la notification. Pour un test
+  ponctuel, `unsafeAllowUnverified: true` — jamais en production.
+- **Test recommandé avant la mise en production** : fais un vrai petit
+  paiement et vérifie dans tes logs que `result.verifiedBy === 'notify-token'`.
+- Si XPAYE change de formule, `verifyHashcode: (fields) => boolean` remplace la
+  vérification intégrée.
+- `responsecode` : `0` = réussi, `-1` = échoué ; toute autre valeur donne
+  `status: 'pending'` (ni crédité, ni marqué échoué).
+- Le montant est lu même avec un séparateur de milliers (`2 000`), et
+  `transactionId` / `transactiondt` est remonté dans `result.operatorReference`.
+- La description est tronquée à 100 caractères.
+
+### Migrer une intégration XPAYE existante
+
+Si ton app signait déjà le jeton de notification avec
+`HMAC(secret, "notify:" + référence)`, garde le même
+secret et le même préfixe : les paiements ouverts avant la migration restent
+reconnus.
+
+```ts
+new XpayeProvider({
+  merchantId: process.env.PAIEMENTPRO_MERCHANT_ID!,
+  webhookSecret: process.env.PAIEMENTPRO_NOTIFY_SECRET!,
+  secretKey: process.env.PAIEMENTPRO_SECRET_KEY,
+  notifyTokenPrefix: 'notify:',
+});
+```
+
+La référence est aussi retrouvée dans un `returnContext` de la forme
+`{ "reference": … }` ou `{ "reference_number": … }`.
 
 ## Moyens de paiement
 
@@ -269,54 +357,6 @@ new XpayeProvider({
 });
 ```
 
-## XPAYE : à savoir
-
-- XPAYE n'a **pas d'API publique de vérification de statut**. La notification
-  est donc la seule source, d'où l'importance du `webhookSecret`.
-- La notification arrive **dans l'URL, corps vide**, et XPAYE colle ses
-  paramètres avec un second `?` (`…&nt=<jeton>?merchantId=…&amount=…`). Le kit
-  répare ce format : passe-lui simplement `req.url`.
-- Formule du `hashcode` (confirmée sur un vrai paiement) :
-  `SHA-256(referenceNumber|amount|merchantId|clé secrète)` en hexadécimal,
-  disponible via `computeXpayeHashcode(fields, secretKey)`.
-  ⚠️ **Le statut n'est pas signé** : un paiement échoué et un paiement réussi
-  de même référence et même montant ont le même hashcode. C'est pourquoi :
-  - un hashcode **faux** fait toujours rejeter la notification ;
-  - dès que `webhookSecret` est fourni, le **jeton `nt` est exigé**
-    (`requireNotifyToken`, défaut `true`), un hashcode valide seul ne suffit pas.
-- La clé secrète XPAYE est courte : ne la réutilise **pas** comme
-  `webhookSecret` (32+ caractères aléatoires générés par toi).
-- **Sandbox** : XPAYE n'y envoie pas toujours la notification. Pour un test
-  ponctuel, `unsafeAllowUnverified: true` — jamais en production.
-- **Test recommandé avant la mise en production** : fais un vrai petit
-  paiement et vérifie dans tes logs que `result.verifiedBy === 'notify-token'`.
-- Si XPAYE change de formule, `verifyHashcode: (fields) => boolean` remplace la
-  vérification intégrée.
-- `responsecode` : `0` = réussi, `-1` = échoué ; toute autre valeur donne
-  `status: 'pending'` (ni crédité, ni marqué échoué).
-- Le montant est lu même avec un séparateur de milliers (`2 000`), et
-  `transactionId` / `transactiondt` est remonté dans `result.operatorReference`.
-- La description est tronquée à 100 caractères.
-
-### Migrer une intégration XPAYE existante
-
-Si ton app signait déjà le jeton de notification avec
-`HMAC(secret, "notify:" + référence)`, garde le même
-secret et le même préfixe : les paiements ouverts avant la migration restent
-reconnus.
-
-```ts
-new XpayeProvider({
-  merchantId: process.env.PAIEMENTPRO_MERCHANT_ID!,
-  webhookSecret: process.env.PAIEMENTPRO_NOTIFY_SECRET!,
-  secretKey: process.env.PAIEMENTPRO_SECRET_KEY,
-  notifyTokenPrefix: 'notify:',
-});
-```
-
-La référence est aussi retrouvée dans un `returnContext` de la forme
-`{ "reference": … }` ou `{ "reference_number": … }`.
-
 ## Numéros ivoiriens
 
 ```ts
@@ -350,7 +390,11 @@ documentation de l'agrégateur) : le kit n'intègre aucun code non documenté.
 
 ```bash
 npm install
-npm test   # compile puis lance les tests (faux serveurs locaux, aucun appel réel)
+npm test        # compile puis lance les tests (faux serveurs locaux, aucun appel réel)
+npm run test:bun  # mêmes tests sous Bun
+
+# Avant chaque commit : `npm test` recompile dist/, qui est versionné
+# (il permet l'installation depuis GitHub sans script, y compris avec Bun).
 ```
 
 Ne mets jamais de vraie clé ou de vrai identifiant marchand dans une issue,

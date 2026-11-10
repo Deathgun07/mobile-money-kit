@@ -1,9 +1,12 @@
 {
   "name": "mobile-money-kit",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
-  "description": "SDK Mobile Money unifié pour l'Afrique de l'Ouest (Orange Money, MTN MoMo, Moov, Wave, carte) via plusieurs agrégateurs (XPAYE/Paiement Pro, CinetPay) avec bascule automatique et vérification sécurisée des notifications.",
+  "description": "SDK XPAYE (Paiement Pro) pour encaisser par Mobile Money, carte et PayPal en Afrique de l'Ouest et centrale (Orange Money, MTN MoMo, Moov/Flooz, Wave…), notifications sécurisées, CinetPay en secours facultatif. Node 18+ et Bun.",
   "keywords": [
+    "xpaye",
+    "paiementpro",
+    "paiement-pro",
     "mobile-money",
     "orange-money",
     "mtn-momo",
@@ -14,11 +17,10 @@
     "fcfa",
     "xof",
     "cinetpay",
-    "paiementpro",
-    "xpaye",
     "cote-d-ivoire",
     "afrique",
-    "webhook"
+    "webhook",
+    "bun"
   ],
   "license": "MIT",
   "author": "Deathgun07",
@@ -47,7 +49,7 @@
     "build": "tsc",
     "test": "npm run build && node --test test/*.test.mjs",
     "prepublishOnly": "npm run build && node --test test/*.test.mjs",
-    "prepare": "npm run build"
+    "test:bun": "tsc && bun test ./test/sdk.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
